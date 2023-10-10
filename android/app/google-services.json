@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "301480140457",
+    "project_id": "usman-a51d1",
+    "storage_bucket": "usman-a51d1.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:301480140457:android:f947c93a1dc7180ac613b8",
+        "android_client_info": {
+          "package_name": "com.example.notify_signup"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCBM_NWZfvC5C3YIEkFkRHUQ7TwTt7SqIo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:301480140457:android:e7ddae384174ac69c613b8",
+        "android_client_info": {
+          "package_name": "com.usman"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCBM_NWZfvC5C3YIEkFkRHUQ7TwTt7SqIo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
