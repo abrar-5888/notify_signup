@@ -1,8 +1,13 @@
+import 'dart:math';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:notify_signup/firebase_options.dart';
+import 'package:notify_signup/registar_FM.dart';
+import 'package:page_transition/page_transition.dart';
 import 'Model/NewUsers.dart';
 
 void main() {
@@ -89,7 +94,8 @@ class _MyPageState extends State<MyPage> {
 
     return regExp.hasMatch(em);
   }
-
+final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+ 
   bool isPhone(String em) {
     String p =
         r'^((\+92)|(0092))-{0,1}\d{3}-{0,1}\d{7}$|^\d{11}$|^\d{4}-\d{7}$';
@@ -98,7 +104,20 @@ class _MyPageState extends State<MyPage> {
 
     return regExp.hasMatch(em);
   }
-
+  String FCMtoken="";
+ getMobileToken() {
+  _firebaseMessaging.getToken().then((String? token) {
+    if (token != null) {
+      setState(() {
+        FCMtoken=token;
+      });
+      
+      print("FCM Token: $FCMtoken");
+    } else {
+      print("Unable to get FCM token");
+    }
+  });
+}
   var RegisterationModel = RequestUsers(
       name: '',
       email: '',
@@ -124,7 +143,17 @@ class _MyPageState extends State<MyPage> {
     'fphoneNo': '',
     'uid': ''
   };
+    String generateRandomFourDigitCode() {
+    Random random = Random();
+    int code = random.nextInt(10000);
+
+    // Ensure the code is four digits long (pad with leading zeros if necessary)
+    return code.toString().padLeft(4, '0');
+  }
   void saveform() async {
+        String fourDigitCode = generateRandomFourDigitCode();
+
+    print("digit code = ${fourDigitCode}");
    String email;
     String pass;
     if (_formKey.currentState!.validate()) {
@@ -140,7 +169,7 @@ class _MyPageState extends State<MyPage> {
         UserCredential userCredential=     await FirebaseAuth.instance.createUserWithEmailAndPassword(email: email, password: pass);
          
          User? user=userCredential.user;
-         
+        await getMobileToken();
           await FirebaseFirestore.instance.collection('UserRequest').add({
           "Name": RegisterationModel.name,
           "Phoneno": RegisterationModel.phoneNo,
@@ -150,9 +179,11 @@ class _MyPageState extends State<MyPage> {
           "designation": RegisterationModel.designation,
           "age": RegisterationModel.age,
           "owner": RegisterationModel.owner,
-          "status": "Pending",
+          "status": "Approve",
           "email": RegisterationModel.email,
           "uid":user?.uid,
+          "residentID":"INVOSEG${fourDigitCode}",
+          "FCM_Token":FCMtoken
         });
         _formKey.currentState!.reset();
         FocusScope.of(context).unfocus();
@@ -793,43 +824,52 @@ void create(){
                             ],
                           ),
                         ),
-                        // Container(
-                        //   //padding: EdgeInsets.all(20),
-                        //   margin: EdgeInsets.all(20),
-                        //   child: Row(
-                        //     mainAxisAlignment: MainAxisAlignment.center,
-                        //     children: [
-                        //       Container(
-                        //           child: Text(
-                        //         "You already have an account?",
-                        //         style: TextStyle(color: Colors.teal[800]),
-                        //       )),
-                        //       TextButton(
-                        //         style: TextButton.styleFrom(
-                        //           textStyle: const TextStyle(
-                        //               fontSize: 12,
-                        //               fontWeight: FontWeight.w800,
-                        //               color: Color(0xff8d43d6)),
-                        //         ),
-                        //         onPressed: () {
-                        //           Navigator.push(
-                        //               context,
-                        //               PageTransition(
-                        //                   duration: Duration(milliseconds: 700),
-                        //                   type: PageTransitionType
-                        //                       .leftToRightWithFade,
-                        //                   child: LoginScreen()));
-                        //         },
-                        //         child: const Text(
-                        //           'Sign in',
-                        //           style: TextStyle(
-                        //               color: Colors.teal,
-                        //               fontWeight: FontWeight.bold),
-                        //         ),
-                        //       ),
-                        //     ],
-                        //   ),
-                        // ),
+                        Container(
+                          //padding: EdgeInsets.all(20),
+                          margin: EdgeInsets.all(20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                  child: TextButton(
+                              child:Text( "Register a Family Member ?",
+                                style: TextStyle(color: Colors.teal[800]),
+                              ),onPressed: (){
+                                Navigator.push(
+                                      context,
+                                      PageTransition(
+                                          duration: Duration(milliseconds: 700),
+                                          type: PageTransitionType
+                                              .leftToRightWithFade,
+                                          child: Register_FM()));
+                                         
+                                          },)),
+                              TextButton(
+                                style: TextButton.styleFrom(
+                                  textStyle: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xff8d43d6)),
+                                ),
+                                onPressed: () {
+                                  Navigator.push(
+                                      context,
+                                      PageTransition(
+                                          duration: Duration(milliseconds: 700),
+                                          type: PageTransitionType
+                                              .leftToRightWithFade,
+                                          child: Register_FM()));
+                                },
+                                child: const Text(
+                                  'Sign Up',
+                                  style: TextStyle(
+                                      color: Colors.teal,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),
