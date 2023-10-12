@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:notify_signup/firebase_options.dart';
 import 'package:notify_signup/registar_FM.dart';
 import 'package:page_transition/page_transition.dart';
@@ -45,6 +46,7 @@ class _MyAppState extends State<MyApp> {
 
     super.initState();
     //_fc.subscribeToTopic("Events");
+     
   }
 
   @override
@@ -72,7 +74,12 @@ class _MyAppState extends State<MyApp> {
       debugShowCheckedModeBanner: false,
       home: MyPage(),
       title: 'Notify-App',
-      theme: ThemeData(primarySwatch: Colors.blue, fontFamily: 'Poppins'),
+      theme: ThemeData(
+        fontFamily: 'Urbanist',
+        textTheme: GoogleFonts.poppinsTextTheme(
+          Theme.of(context).textTheme,
+        ),
+      ),
     );
   }
 }
@@ -94,7 +101,6 @@ class _MyPageState extends State<MyPage> {
 
     return regExp.hasMatch(em);
   }
-final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
  
   bool isPhone(String em) {
     String p =
@@ -104,20 +110,7 @@ final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
 
     return regExp.hasMatch(em);
   }
-  String FCMtoken="";
- getMobileToken() {
-  _firebaseMessaging.getToken().then((String? token) {
-    if (token != null) {
-      setState(() {
-        FCMtoken=token;
-      });
-      
-      print("FCM Token: $FCMtoken");
-    } else {
-      print("Unable to get FCM token");
-    }
-  });
-}
+
   var RegisterationModel = RequestUsers(
       name: '',
       email: '',
@@ -143,33 +136,56 @@ final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
     'fphoneNo': '',
     'uid': ''
   };
+  bool status=false;
     String generateRandomFourDigitCode() {
     Random random = Random();
     int code = random.nextInt(10000);
 
+
     // Ensure the code is four digits long (pad with leading zeros if necessary)
     return code.toString().padLeft(4, '0');
   }
+  final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
+  String FCMtoken="";
+ getMobileToken() {
+  _firebaseMessaging.getToken().then((String? token) {
+    if (token != null) {
+      
+        setState(() {
+          FCMtoken=token;
+        });
+    
+      
+      print("FCM Token: $FCMtoken");
+      
+    } else {
+      print("Unable to get FCM token");
+      
+      
+    }
+    print(FCMtoken);
+  });
+}
   void saveform() async {
         String fourDigitCode = generateRandomFourDigitCode();
 
     print("digit code = ${fourDigitCode}");
    String email;
     String pass;
+    String FCM_Token;
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
+      
       try {
-     
+     FCM_Token=FCMtoken;
         email=RegisterationModel.email;
         pass=RegisterationModel.password;
-        print("Email = ${email},password = ${pass}");
-     
-        
+        print("Email = ${RegisterationModel.name},password = ${pass}");
       
         UserCredential userCredential=     await FirebaseAuth.instance.createUserWithEmailAndPassword(email: email, password: pass);
          
          User? user=userCredential.user;
-        await getMobileToken();
+        // await getMobileToken();
           await FirebaseFirestore.instance.collection('UserRequest').add({
           "Name": RegisterationModel.name,
           "Phoneno": RegisterationModel.phoneNo,
@@ -183,15 +199,18 @@ final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
           "email": RegisterationModel.email,
           "uid":user?.uid,
           "residentID":"INVOSEG${fourDigitCode}",
-          "FCM_Token":FCMtoken
+          "FCM_Token":FCM_Token,
         });
+        
+        
+      
         _formKey.currentState!.reset();
         FocusScope.of(context).unfocus();
-      } catch (e) {
-        print("Catch working");
-        print(e);
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
+        if(userCredential!=null){
+setState(() {
+          status=true;
+        });}
+         ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             'Details Sent!',
@@ -202,14 +221,34 @@ final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
           backgroundColor: Colors.grey[400],
         ),
       );
-    }
+      
+        
+      
+      print("Status == ${status}");
+      } catch (e) {
+        print("Catch working");
+        print(e);
+      }
+     
+    
+      }
   }
-void create(){
 
-}
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(title: Text("Sign Up",style: TextStyle(
+                        color: Color(0xff212121),
+                        fontWeight: FontWeight.w700,
+                        fontSize: 24),),centerTitle: true, leading: Padding(
+                    padding: const EdgeInsets.only(left: 8.0),
+                    child: Image(
+                      image: AssetImage('assets/Images/rehman.png'),
+                      height: 60,
+                      width: 60,
+                    ),
+                  ),backgroundColor:  Colors.white38,elevation: 0,),
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Center(
@@ -224,39 +263,7 @@ void create(){
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        FittedBox(
-                          fit: BoxFit.fitWidth,
-                          child: Container(
-                            padding: EdgeInsets.only(left: 20, top: 40),
-                            child: Text(
-                              "Request Credentials,",
-                              style: TextStyle(
-                                  fontSize: (MediaQuery.of(context).size.width -
-                                          MediaQuery.of(context).padding.top) *
-                                      0.060,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black),
-                              textAlign: TextAlign.start,
-                            ),
-                          ),
-                        ),
-                        FittedBox(
-                          fit: BoxFit.fitWidth,
-                          child: Container(
-                            padding:
-                                EdgeInsets.only(left: 20, bottom: 20, top: 10),
-                            child: Text(
-                              "Once Admin approve your request, you will get your\ncredentials via Email you provided.",
-                              style: TextStyle(
-                                  fontSize: (MediaQuery.of(context).size.width -
-                                          MediaQuery.of(context).padding.top) *
-                                      0.040,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.grey[600]),
-                              textAlign: TextAlign.start,
-                            ),
-                          ),
-                        ),
+                       
                         Container(
                           decoration: BoxDecoration(
                             border: Border.all(
@@ -300,7 +307,9 @@ void create(){
                                     }
                                   },
                                   onSaved: (value) {
+                                    
                                     RegisterationModel.name = value!;
+                                    print("REgisterion name = ${RegisterationModel.name}");
                                   },
                                   keyboardType: TextInputType.text,
                                 ),
@@ -818,58 +827,65 @@ void create(){
                                     "Request Credentials",
                                     style: TextStyle(color: Colors.white),
                                   ),
-                                  onPressed: saveform,
+                                  onPressed: (){
+                                     saveform();
+                                    if(status==true){
+                                    
+                                    showDialog1(context);
+                                    }
+                                    print("Working");
+                                    }
                                 ),
                               )
                             ],
                           ),
                         ),
-                        Container(
-                          //padding: EdgeInsets.all(20),
-                          margin: EdgeInsets.all(20),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Container(
-                                  child: TextButton(
-                              child:Text( "Register a Family Member ?",
-                                style: TextStyle(color: Colors.teal[800]),
-                              ),onPressed: (){
-                                Navigator.push(
-                                      context,
-                                      PageTransition(
-                                          duration: Duration(milliseconds: 700),
-                                          type: PageTransitionType
-                                              .leftToRightWithFade,
-                                          child: Register_FM()));
+                        // Container(
+                        //   //padding: EdgeInsets.all(20),
+                        //   margin: EdgeInsets.all(20),
+                        //   child: Row(
+                        //     mainAxisAlignment: MainAxisAlignment.center,
+                        //     children: [
+                        //       Container(
+                        //           child: TextButton(
+                        //       child:Text( "Register a Family Member ?",
+                        //         style: TextStyle(color: Colors.teal[800]),
+                        //       ),onPressed: (){
+                        //         Navigator.push(
+                        //               context,
+                        //               PageTransition(
+                        //                   duration: Duration(milliseconds: 700),
+                        //                   type: PageTransitionType
+                        //                       .leftToRightWithFade,
+                        //                   child: Register_FM()));
                                          
-                                          },)),
-                              TextButton(
-                                style: TextButton.styleFrom(
-                                  textStyle: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w800,
-                                      color: Color(0xff8d43d6)),
-                                ),
-                                onPressed: () {
-                                  Navigator.push(
-                                      context,
-                                      PageTransition(
-                                          duration: Duration(milliseconds: 700),
-                                          type: PageTransitionType
-                                              .leftToRightWithFade,
-                                          child: Register_FM()));
-                                },
-                                child: const Text(
-                                  'Sign Up',
-                                  style: TextStyle(
-                                      color: Colors.teal,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                        //                   },)),
+                        //       TextButton(
+                        //         style: TextButton.styleFrom(
+                        //           textStyle: const TextStyle(
+                        //               fontSize: 12,
+                        //               fontWeight: FontWeight.w800,
+                        //               color: Color(0xff8d43d6)),
+                        //         ),
+                        //         onPressed: () {
+                        //           Navigator.push(
+                        //               context,
+                        //               PageTransition(
+                        //                   duration: Duration(milliseconds: 700),
+                        //                   type: PageTransitionType
+                        //                       .leftToRightWithFade,
+                        //                   child: Register_FM()));
+                        //         },
+                        //         child: const Text(
+                        //           'Sign Up',
+                        //           style: TextStyle(
+                        //               color: Colors.teal,
+                        //               fontWeight: FontWeight.bold),
+                        //         ),
+                        //       ),
+                        //     ],
+                        //   ),
+                        // ),
                       ],
                     ),
                   ),
@@ -880,5 +896,36 @@ void create(){
         ),
       ),
     );
+  }
+  void showDialog1(BuildContext context){
+  showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Add Family Member'),
+          content: Text('You want to add a family member?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                // Handle "No" button press
+                Navigator.of(context).pop(); // Close the dialog
+                // You can navigate back to the previous page here
+              },
+              child: Text('No'),
+            ),
+            TextButton(
+              onPressed: () {
+                // Handle "Yes" button press
+                Navigator.push(context, MaterialPageRoute(builder: (context) => Register_FM(),)); // Close the dialog
+                // You can navigate to the page where you want to add a family member
+                // using Navigator or any other navigation method
+              },
+              child: Text('Yes'),
+            ),
+          ],
+        );
+    });
+
+
   }
 }
