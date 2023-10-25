@@ -28,7 +28,8 @@ class _MyAppState extends State<MyApp> {
 
   void initializeFlutterFire() async {
     try {
-      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+      await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform);
       setState(() {
         _initialized = true;
       });
@@ -46,7 +47,6 @@ class _MyAppState extends State<MyApp> {
 
     super.initState();
     //_fc.subscribeToTopic("Events");
-     
   }
 
   @override
@@ -101,7 +101,9 @@ class _MyPageState extends State<MyPage> {
 
     return regExp.hasMatch(em);
   }
- 
+
+  String documentId = "";
+
   bool isPhone(String em) {
     String p =
         r'^((\+92)|(0092))-{0,1}\d{3}-{0,1}\d{7}$|^\d{11}$|^\d{4}-\d{7}$';
@@ -114,7 +116,7 @@ class _MyPageState extends State<MyPage> {
   var RegisterationModel = RequestUsers(
       name: '',
       email: '',
-      password :'',
+      password: '',
       phoneNo: '',
       designation: '',
       age: '',
@@ -136,57 +138,81 @@ class _MyPageState extends State<MyPage> {
     'fphoneNo': '',
     'uid': ''
   };
-  bool status=false;
-    String generateRandomFourDigitCode() {
+  bool status = false;
+  String generateRandomFourDigitCode() {
     Random random = Random();
     int code = random.nextInt(10000);
-
 
     // Ensure the code is four digits long (pad with leading zeros if necessary)
     return code.toString().padLeft(4, '0');
   }
+
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
-  String FCMtoken="";
- getMobileToken() {
-  _firebaseMessaging.getToken().then((String? token) {
-    if (token != null) {
-      
+  String FCMtoken = "";
+  getMobileToken() {
+    _firebaseMessaging.getToken().then((String? token) {
+      if (token != null) {
         setState(() {
-          FCMtoken=token;
+          FCMtoken = token;
         });
-    
-      
-      print("FCM Token: $FCMtoken");
-      
-    } else {
-      print("Unable to get FCM token");
-      
-      
+
+        print("FCM Token: $FCMtoken");
+      } else {
+        print("Unable to get FCM token");
+      }
+      print(FCMtoken);
+    });
+  }
+
+  Future<bool> isEmailRegistered(String email) async {
+    try {
+      List<String> signInMethods = await FirebaseAuth.instance
+          .fetchSignInMethodsForEmail(RegisterationModel.email);
+      return signInMethods.isNotEmpty;
+    } catch (e) {
+      print("Error checking email registration: $e");
+      return false; // Handle the error as needed
     }
-    print(FCMtoken);
-  });
-}
-  void saveform() async {
-        String fourDigitCode = generateRandomFourDigitCode();
+  }
+
+  saveform() async {
+    String fourDigitCode = generateRandomFourDigitCode();
 
     print("digit code = ${fourDigitCode}");
-   String email;
+    String email;
     String pass;
     String FCM_Token;
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
-      
+
       try {
-     FCM_Token=FCMtoken;
-        email=RegisterationModel.email;
-        pass=RegisterationModel.password;
+        FCM_Token = FCMtoken;
+        email = RegisterationModel.email;
+        pass = RegisterationModel.password;
         print("Email = ${RegisterationModel.name},password = ${pass}");
-      
-        UserCredential userCredential=     await FirebaseAuth.instance.createUserWithEmailAndPassword(email: email, password: pass);
-         
-         User? user=userCredential.user;
-        // await getMobileToken();
-          await FirebaseFirestore.instance.collection('UserRequest').add({
+        // var userCredential;
+        // try {
+        UserCredential userCredential = await FirebaseAuth.instance
+            .createUserWithEmailAndPassword(email: email, password: pass);
+
+        // } catch (e) {
+        //   print("Error==${e}");
+        //   ScaffoldMessenger.of(context).showSnackBar(
+        //     SnackBar(
+        //       content: Text(
+        //         'Email is Already used!',
+        //         style: TextStyle(color: Colors.black),
+        //       ),
+        //       action: SnackBarAction(
+        //           label: 'OK', textColor: Colors.black, onPressed: () {}),
+        //       backgroundColor: Colors.grey[400],
+        //     ),
+        //   );
+        // }
+
+        User? user = userCredential.user;
+        await getMobileToken();
+        await FirebaseFirestore.instance.collection('UserRequest').add({
           "Name": RegisterationModel.name,
           "Phoneno": RegisterationModel.phoneNo,
           "address": RegisterationModel.address,
@@ -197,58 +223,79 @@ class _MyPageState extends State<MyPage> {
           "owner": RegisterationModel.owner,
           "status": "Approve",
           "email": RegisterationModel.email,
-          "uid":user?.uid,
-          "residentID":"INVOSEG${fourDigitCode}",
-          "FCM_Token":FCM_Token,
-        });
-        
-        
-      
+          "uid": user?.uid,
+          "residentID": "INVOSEG${fourDigitCode}",
+          "FCM_Token": FCM_Token,
+        }).then((DocumentReference document) => {
+              print("Dcoument id = ${document.id}"),
+              setState(() {
+                documentId = document.id;
+                status = true;
+              })
+            });
+
         _formKey.currentState!.reset();
         FocusScope.of(context).unfocus();
-        if(userCredential!=null){
-setState(() {
-          status=true;
-        });}
-         ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Details Sent!',
-            style: TextStyle(color: Colors.black),
+
+        if (userCredential != null) {}
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Details Sent!',
+              style: TextStyle(color: Colors.black),
+            ),
+            action: SnackBarAction(
+                label: 'OK', textColor: Colors.black, onPressed: () {}),
+            backgroundColor: Colors.grey[400],
           ),
-          action: SnackBarAction(
-              label: 'OK', textColor: Colors.black, onPressed: () {}),
-          backgroundColor: Colors.grey[400],
-        ),
-      );
-      
-        
-      
-      print("Status == ${status}");
+        );
+
+        print("Status == ${status}");
+        if (status == true) {
+          showDialog1(context);
+        }
       } catch (e) {
         print("Catch working");
         print(e);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error! ${e}"),
+            action: SnackBarAction(
+              label: 'Ok',
+              onPressed: () {
+                // Action button callback goes here
+                print('Action button pressed');
+              },
+            ),
+          ),
+        );
       }
-     
-    
-      }
+    }
   }
-
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Sign Up",style: TextStyle(
-                        color: Color(0xff212121),
-                        fontWeight: FontWeight.w700,
-                        fontSize: 24),),centerTitle: true, leading: Padding(
-                    padding: const EdgeInsets.only(left: 8.0),
-                    child: Image(
-                      image: AssetImage('assets/Images/rehman.png'),
-                      height: 60,
-                      width: 60,
-                    ),
-                  ),backgroundColor:  Colors.white38,elevation: 0,),
+      appBar: AppBar(
+        title: Text(
+          "Sign Up",
+          style: TextStyle(
+              color: Color(0xff212121),
+              fontWeight: FontWeight.w700,
+              fontSize: 24),
+        ),
+        centerTitle: true,
+        leading: Padding(
+          padding: const EdgeInsets.only(left: 8.0),
+          child: Image(
+            image: AssetImage('assets/Images/rehman.png'),
+            height: 60,
+            width: 60,
+          ),
+        ),
+        backgroundColor: Colors.white38,
+        elevation: 0,
+      ),
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Center(
@@ -263,7 +310,6 @@ setState(() {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                       
                         Container(
                           decoration: BoxDecoration(
                             border: Border.all(
@@ -307,9 +353,9 @@ setState(() {
                                     }
                                   },
                                   onSaved: (value) {
-                                    
                                     RegisterationModel.name = value!;
-                                    print("REgisterion name = ${RegisterationModel.name}");
+                                    print(
+                                        "REgisterion name = ${RegisterationModel.name}");
                                   },
                                   keyboardType: TextInputType.text,
                                 ),
@@ -401,7 +447,7 @@ setState(() {
                               Expanded(
                                 child: TextFormField(
                                   obscureText: true,
-                                  initialValue: initials['password'] ,
+                                  initialValue: initials['password'],
                                   keyboardType: TextInputType.visiblePassword,
                                   decoration: InputDecoration(
                                     labelText: 'Enter Your Password',
@@ -413,7 +459,7 @@ setState(() {
                                   validator: (value) {
                                     if (value!.isEmpty) {
                                       return 'Password is not valid!';
-                                    } 
+                                    }
                                     return null;
                                   },
                                   onSaved: (value) {
@@ -423,7 +469,8 @@ setState(() {
                               )
                             ],
                           ),
-                        ),Container(
+                        ),
+                        Container(
                           decoration: BoxDecoration(
                             border: Border.all(
                               color: Colors.grey.withOpacity(0.5),
@@ -796,46 +843,46 @@ setState(() {
                             children: <Widget>[
                               Container(
                                 child: ElevatedButton(
-                                  style: ButtonStyle(
-                                    shape: MaterialStateProperty.all<
-                                            RoundedRectangleBorder>(
-                                        RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(10.0),
-                                    )),
-                                    padding: MaterialStateProperty.all(
-                                        EdgeInsets.symmetric(
-                                                vertical: 25,
-                                                horizontal:
-                                                    MediaQuery.of(context)
-                                                            .size
-                                                            .width -
-                                                        MediaQuery.of(context)
-                                                            .padding
-                                                            .top) *
-                                            0.25),
-                                    backgroundColor: MaterialStateProperty.all(
-                                         Color.fromRGBO(
-                                                          15, 39, 127, 1)), // <-- Button color
-                                    overlayColor: MaterialStateProperty
-                                        .resolveWith<Color?>((states) {
-                                      if (states
-                                          .contains(MaterialState.pressed))
-                                        return  Color.fromRGBO(15, 39, 127, 0.548); // <-- Splash color
+                                    style: ButtonStyle(
+                                      shape: MaterialStateProperty.all<
+                                              RoundedRectangleBorder>(
+                                          RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(10.0),
+                                      )),
+                                      padding: MaterialStateProperty.all(
+                                          EdgeInsets.symmetric(
+                                                  vertical: 25,
+                                                  horizontal:
+                                                      MediaQuery.of(context)
+                                                              .size
+                                                              .width -
+                                                          MediaQuery.of(context)
+                                                              .padding
+                                                              .top) *
+                                              0.25),
+                                      backgroundColor:
+                                          MaterialStateProperty.all(
+                                              Color.fromRGBO(15, 39, 127,
+                                                  1)), // <-- Button color
+                                      overlayColor: MaterialStateProperty
+                                          .resolveWith<Color?>((states) {
+                                        if (states
+                                            .contains(MaterialState.pressed))
+                                          return Color.fromRGBO(15, 39, 127,
+                                              0.548); // <-- Splash color
+                                      }),
+                                    ),
+                                    child: Text(
+                                      "Request Credentials",
+                                      style: TextStyle(color: Colors.white),
+                                    ),
+                                    onPressed: () async {
+                                      await saveform();
+
+                                      //   print("Working");
+                                      //
                                     }),
-                                  ),
-                                  child: Text(
-                                    "Request Credentials",
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                  onPressed: (){
-                                     saveform();
-                                    if(status==true){
-                                    
-                                    showDialog1(context);
-                                    }
-                                    print("Working");
-                                    }
-                                ),
                               )
                             ],
                           ),
@@ -858,7 +905,7 @@ setState(() {
                         //                   type: PageTransitionType
                         //                       .leftToRightWithFade,
                         //                   child: Register_FM()));
-                                         
+
                         //                   },)),
                         //       TextButton(
                         //         style: TextButton.styleFrom(
@@ -897,35 +944,48 @@ setState(() {
       ),
     );
   }
-  void showDialog1(BuildContext context){
-  showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Add Family Member'),
-          content: Text('You want to add a family member?'),
-          actions: <Widget>[
-            TextButton(
-              onPressed: () {
-                // Handle "No" button press
-                Navigator.of(context).pop(); // Close the dialog
-                // You can navigate back to the previous page here
-              },
-              child: Text('No'),
-            ),
-            TextButton(
-              onPressed: () {
-                // Handle "Yes" button press
-                Navigator.push(context, MaterialPageRoute(builder: (context) => Register_FM(),)); // Close the dialog
-                // You can navigate to the page where you want to add a family member
-                // using Navigator or any other navigation method
-              },
-              child: Text('Yes'),
-            ),
-          ],
-        );
-    });
 
-
+  void showDialog1(BuildContext context) {
+    showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text('Add Family Member'),
+            content: Text('You want to add a family member?'),
+            actions: <Widget>[
+              TextButton(
+                onPressed: () {
+                  // Handle "No" button press
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: Text("Your Details has been submitted ")));
+                  Navigator.of(context).pop();
+                  _formKey.currentState!.reset();
+                  FocusScope.of(context).unfocus();
+                  // Close the dialog
+                  // You can navigate back to the previous page here
+                },
+                child: Text('No'),
+              ),
+              TextButton(
+                onPressed: () {
+                  // Handle "Yes" button press
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => Register_FM(
+                            docid: documentId,
+                            owner: RegisterationModel.owner,
+                            address: RegisterationModel.address,
+                            parentID: RegisterationModel.uid,
+                            ownerEmail: RegisterationModel.email),
+                      )); // Close the dialog
+                  // You can navigate to the page where you want to add a family member
+                  // using Navigator or any other navigation method
+                },
+                child: Text('Yes'),
+              ),
+            ],
+          );
+        });
   }
 }
