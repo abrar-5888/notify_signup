@@ -55,6 +55,7 @@ class _SplashScreenState extends State<SplashScreen> {
             width: 100,
             child: Image.asset("assets/Images/TransparentLogo.png"),
           ),
+          //oka
           const Text(
             "INVOSEG",
             style: TextStyle(shadows: [
