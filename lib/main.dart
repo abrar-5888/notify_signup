@@ -1,22 +1,25 @@
 import 'dart:math';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:notify_signup/firebase_options.dart';
 import 'package:notify_signup/registar_FM.dart';
-import 'package:page_transition/page_transition.dart';
+import 'package:notify_signup/splashScreen.dart';
+
 import 'Model/NewUsers.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
   @override
   _MyAppState createState() => _MyAppState();
 }
@@ -52,7 +55,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     if (_error) {
-      return MaterialApp(
+      return const MaterialApp(
         home: Scaffold(
           body: AlertDialog(
             content: Text('Something went wrong. Please restart the app.'),
@@ -61,7 +64,7 @@ class _MyAppState extends State<MyApp> {
       );
     }
     if (!_initialized) {
-      return MaterialApp(
+      return const MaterialApp(
         home: Scaffold(
           body: Center(
             child: CircularProgressIndicator(),
@@ -72,7 +75,7 @@ class _MyAppState extends State<MyApp> {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: MyPage(),
+      home: const SplashScreen(),
       title: 'Notify-App',
       theme: ThemeData(
         fontFamily: 'Urbanist',
@@ -92,12 +95,14 @@ class MyPage extends StatefulWidget {
 }
 
 class _MyPageState extends State<MyPage> {
+  final passContoller = TextEditingController();
+
   final GlobalKey<FormState> _formKey = GlobalKey();
   bool isEmail(String em) {
     String p =
         r'^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$';
 
-    RegExp regExp = new RegExp(p);
+    RegExp regExp = RegExp(p);
 
     return regExp.hasMatch(em);
   }
@@ -108,7 +113,7 @@ class _MyPageState extends State<MyPage> {
     String p =
         r'^((\+92)|(0092))-{0,1}\d{3}-{0,1}\d{7}$|^\d{11}$|^\d{4}-\d{7}$';
 
-    RegExp regExp = new RegExp(p);
+    RegExp regExp = RegExp(p);
 
     return regExp.hasMatch(em);
   }
@@ -139,6 +144,7 @@ class _MyPageState extends State<MyPage> {
     'uid': ''
   };
   bool status = false;
+  String email = "";
   String generateRandomFourDigitCode() {
     Random random = Random();
     int code = random.nextInt(10000);
@@ -148,20 +154,35 @@ class _MyPageState extends State<MyPage> {
   }
 
   final FirebaseMessaging _firebaseMessaging = FirebaseMessaging.instance;
-  String FCMtoken = "";
-  getMobileToken() {
-    _firebaseMessaging.getToken().then((String? token) {
-      if (token != null) {
-        setState(() {
-          FCMtoken = token;
-        });
 
-        print("FCM Token: $FCMtoken");
-      } else {
-        print("Unable to get FCM token");
-      }
-      print(FCMtoken);
+  void generatePassword() {
+    passContoller.text = RegisterationModel.name;
+    final random = Random();
+    const upperCaseChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const numericChars = '0123456789';
+
+    String password = '';
+
+    for (int i = 0; i < 4; i++) {
+      password += upperCaseChars[random.nextInt(upperCaseChars.length)];
+      // passContoller.text = password;
+    }
+
+    for (int i = 0; i < 4; i++) {
+      password += numericChars[random.nextInt(numericChars.length)];
+      // passContoller.text = password;
+    }
+    setState(() {
+      passContoller.text = password;
     });
+//   }
+
+// // Add this function to set the generated password
+    // void setGeneratedPassword(String password) {
+    //   // Set the generated password in the TextFormField
+    //   // Replace 'yourPasswordFieldController' with your actual TextEditingController
+    //   passContoller.text = password;
+    // }
   }
 
   Future<bool> isEmailRegistered(String email) async {
@@ -178,18 +199,26 @@ class _MyPageState extends State<MyPage> {
   saveform() async {
     String fourDigitCode = generateRandomFourDigitCode();
 
-    print("digit code = ${fourDigitCode}");
-    String email;
+    print("digit code = $fourDigitCode");
+
     String pass;
-    String FCM_Token;
+    String fcmToken;
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
       try {
-        FCM_Token = FCMtoken;
-        email = RegisterationModel.email;
+        // FCM_Token = FCMtoken;
+        if (RegisterationModel.email.isEmpty) {
+          setState(() {
+            email = "${RegisterationModel.phoneNo}@gmail.com";
+          });
+        } else {
+          setState(() {
+            email = RegisterationModel.email;
+          });
+        }
         pass = RegisterationModel.password;
-        print("Email = ${RegisterationModel.name},password = ${pass}");
+        print("Email = $email,password = $pass");
         // var userCredential;
         // try {
         UserCredential userCredential = await FirebaseAuth.instance
@@ -211,10 +240,10 @@ class _MyPageState extends State<MyPage> {
         // }
 
         User? user = userCredential.user;
-        await getMobileToken();
+        // await getMobileToken();
         await FirebaseFirestore.instance.collection('UserRequest').add({
           "Name": RegisterationModel.name,
-          "Phoneno": RegisterationModel.phoneNo,
+          "phonenumber": RegisterationModel.phoneNo,
           "address": RegisterationModel.address,
           "fPhonenumber": RegisterationModel.fphoneNo,
           "fName": RegisterationModel.fname,
@@ -222,25 +251,29 @@ class _MyPageState extends State<MyPage> {
           "age": RegisterationModel.age,
           "owner": RegisterationModel.owner,
           "status": "Approve",
-          "email": RegisterationModel.email,
+          "password": RegisterationModel.password,
+          "email": email, "TFM": 0,
           "uid": user?.uid,
-          "residentID": "INVOSEG${fourDigitCode}",
-          "FCM_Token": FCM_Token,
-        }).then((DocumentReference document) => {
-              print("Dcoument id = ${document.id}"),
-              setState(() {
-                documentId = document.id;
-                status = true;
-              })
-            });
+          "residentID": "INVOSEG$fourDigitCode",
+          // "FCM_Token": FCM_Token,
+        }).then((DocumentReference document) async {
+          print("Dcoument id = ${document.id}");
+          setState(() {
+            documentId = document.id;
+            status = true;
+          });
+          await FirebaseFirestore.instance
+              .collection('UserRequest')
+              .doc(documentId)
+              .update({'parentID': documentId});
+        });
 
         _formKey.currentState!.reset();
         FocusScope.of(context).unfocus();
 
-        if (userCredential != null) {}
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
+            content: const Text(
               'Details Sent!',
               style: TextStyle(color: Colors.black),
             ),
@@ -250,16 +283,16 @@ class _MyPageState extends State<MyPage> {
           ),
         );
 
-        print("Status == ${status}");
+        print("Status == $status");
         if (status == true) {
           showDialog1(context);
         }
       } catch (e) {
         print("Catch working");
-        print(e);
+        print(e.toString());
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Error! ${e}"),
+            content: const Text("Error! Account already Occured ! "),
             action: SnackBarAction(
               label: 'Ok',
               onPressed: () {
@@ -277,7 +310,7 @@ class _MyPageState extends State<MyPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           "Sign Up",
           style: TextStyle(
               color: Color(0xff212121),
@@ -285,10 +318,10 @@ class _MyPageState extends State<MyPage> {
               fontSize: 24),
         ),
         centerTitle: true,
-        leading: Padding(
-          padding: const EdgeInsets.only(left: 8.0),
+        leading: const Padding(
+          padding: EdgeInsets.only(left: 8.0),
           child: Image(
-            image: AssetImage('assets/Images/rehman.png'),
+            image: AssetImage('assets/Images/izmir.jpg'),
             height: 60,
             width: 60,
           ),
@@ -305,7 +338,7 @@ class _MyPageState extends State<MyPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
+                  SizedBox(
                     width: double.infinity,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -322,7 +355,7 @@ class _MyPageState extends State<MyPage> {
                               vertical: 10.0, horizontal: 20.0),
                           child: Row(
                             children: <Widget>[
-                              Padding(
+                              const Padding(
                                 padding: EdgeInsets.symmetric(
                                     vertical: 10.0, horizontal: 15.0),
                                 child: Icon(
@@ -340,7 +373,7 @@ class _MyPageState extends State<MyPage> {
                               Expanded(
                                 child: TextFormField(
                                   initialValue: initials['name'] as String,
-                                  decoration: InputDecoration(
+                                  decoration: const InputDecoration(
                                     labelText: 'Enter Your Full Name',
                                     border: InputBorder.none,
                                     hintText: 'Adam Hunt',
@@ -351,6 +384,7 @@ class _MyPageState extends State<MyPage> {
                                     if (value!.isEmpty) {
                                       return 'This field is required and cannot be left empty!';
                                     }
+                                    return null;
                                   },
                                   onSaved: (value) {
                                     RegisterationModel.name = value!;
@@ -375,7 +409,7 @@ class _MyPageState extends State<MyPage> {
                               vertical: 10.0, horizontal: 20.0),
                           child: Row(
                             children: <Widget>[
-                              Padding(
+                              const Padding(
                                 padding: EdgeInsets.symmetric(
                                     vertical: 10.0, horizontal: 15.0),
                                 child: Icon(
@@ -390,11 +424,11 @@ class _MyPageState extends State<MyPage> {
                                 margin: const EdgeInsets.only(
                                     left: 00.0, right: 10.0),
                               ),
-                              new Expanded(
+                              Expanded(
                                 child: TextFormField(
                                   initialValue: initials['email'] as String,
                                   keyboardType: TextInputType.emailAddress,
-                                  decoration: InputDecoration(
+                                  decoration: const InputDecoration(
                                     labelText: 'Enter Your Email',
                                     border: InputBorder.none,
                                     hintText: 'john@email.com',
@@ -402,11 +436,11 @@ class _MyPageState extends State<MyPage> {
                                         color: Colors.grey, fontSize: 10),
                                   ),
                                   validator: (value) {
-                                    if (value!.isEmpty) {
-                                      return 'Invalid email!';
-                                    } else if (!isEmail(value)) {
-                                      return 'Please enter valid Email.';
-                                    }
+                                    // if (value!.isEmpty) {
+                                    //   return 'Invalid email!';
+                                    // } else if (!isEmail(value)) {
+                                    //   return 'Please enter valid Email.';
+                                    // }
                                     return null;
                                   },
                                   onSaved: (value) {
@@ -429,7 +463,7 @@ class _MyPageState extends State<MyPage> {
                               vertical: 10.0, horizontal: 20.0),
                           child: Row(
                             children: <Widget>[
-                              Padding(
+                              const Padding(
                                 padding: EdgeInsets.symmetric(
                                     vertical: 10.0, horizontal: 15.0),
                                 child: Icon(
@@ -446,14 +480,30 @@ class _MyPageState extends State<MyPage> {
                               ),
                               Expanded(
                                 child: TextFormField(
-                                  obscureText: true,
-                                  initialValue: initials['password'],
+                                  controller: passContoller,
+                                  // obscureText: true,
+
                                   keyboardType: TextInputType.visiblePassword,
                                   decoration: InputDecoration(
+                                    suffixIcon: Container(
+                                      margin: const EdgeInsets.all(8),
+                                      child: TextButton(
+                                        style: TextButton.styleFrom(
+                                          minimumSize: const Size(100, 50),
+                                        ),
+                                        child: const Text(
+                                          "generate pass",
+                                          style: TextStyle(fontSize: 10),
+                                        ),
+                                        onPressed: () {
+                                          generatePassword();
+                                        },
+                                      ),
+                                    ),
                                     labelText: 'Enter Your Password',
                                     border: InputBorder.none,
                                     hintText: '********',
-                                    hintStyle: TextStyle(
+                                    hintStyle: const TextStyle(
                                         color: Colors.grey, fontSize: 10),
                                   ),
                                   validator: (value) {
@@ -482,7 +532,7 @@ class _MyPageState extends State<MyPage> {
                               vertical: 10.0, horizontal: 20.0),
                           child: Row(
                             children: <Widget>[
-                              Padding(
+                              const Padding(
                                 padding: EdgeInsets.symmetric(
                                     vertical: 10.0, horizontal: 15.0),
                                 child: Icon(
@@ -501,7 +551,7 @@ class _MyPageState extends State<MyPage> {
                                 child: TextFormField(
                                   initialValue: initials['phoneNo'] as String,
                                   keyboardType: TextInputType.phone,
-                                  decoration: InputDecoration(
+                                  decoration: const InputDecoration(
                                     labelText: 'Enter Your Phone Number',
                                     border: InputBorder.none,
                                     hintText: '030xxxxxxxx',
@@ -513,6 +563,16 @@ class _MyPageState extends State<MyPage> {
                                       return 'Phone Number is not valid!';
                                     } else if (!isPhone(value)) {
                                       return 'Please enter valid Phone.';
+                                    }
+                                    if (value.contains("#") ||
+                                        value.contains("*") ||
+                                        value.contains("\$") ||
+                                        value.contains("=") ||
+                                        value.contains("&") ||
+                                        value.contains("^") ||
+                                        value.contains("%") ||
+                                        value.contains("@")) {
+                                      return 'Invalid Phone Number';
                                     }
                                     return null;
                                   },
@@ -536,7 +596,7 @@ class _MyPageState extends State<MyPage> {
                               vertical: 10.0, horizontal: 20.0),
                           child: Row(
                             children: <Widget>[
-                              Padding(
+                              const Padding(
                                 padding: EdgeInsets.symmetric(
                                     vertical: 10.0, horizontal: 15.0),
                                 child: Icon(
@@ -556,7 +616,7 @@ class _MyPageState extends State<MyPage> {
                                   initialValue:
                                       initials['designation'] as String,
                                   keyboardType: TextInputType.text,
-                                  decoration: InputDecoration(
+                                  decoration: const InputDecoration(
                                     labelText: 'Enter Job Designation',
                                     border: InputBorder.none,
                                     hintText: 'Associate Marketing Manager',
@@ -566,7 +626,17 @@ class _MyPageState extends State<MyPage> {
                                   validator: (value) {
                                     if (value!.isEmpty) {
                                       return 'This field cannot be left empty!';
+                                    } else if (value.contains("#") ||
+                                        value.contains("*") ||
+                                        value.contains("\$") ||
+                                        value.contains("=") ||
+                                        value.contains("&") ||
+                                        value.contains("^") ||
+                                        value.contains("%") ||
+                                        value.contains("@")) {
+                                      return 'Invalid Job Designation';
                                     }
+                                    return null;
                                   },
                                   onSaved: (value) {
                                     RegisterationModel.designation = value!;
@@ -588,7 +658,7 @@ class _MyPageState extends State<MyPage> {
                               vertical: 10.0, horizontal: 20.0),
                           child: Row(
                             children: <Widget>[
-                              Padding(
+                              const Padding(
                                 padding: EdgeInsets.symmetric(
                                     vertical: 10.0, horizontal: 15.0),
                                 child: Icon(
@@ -607,7 +677,7 @@ class _MyPageState extends State<MyPage> {
                                 child: TextFormField(
                                   initialValue: initials['age'] as String,
                                   keyboardType: TextInputType.number,
-                                  decoration: InputDecoration(
+                                  decoration: const InputDecoration(
                                     labelText: 'Enter Your Age',
                                     border: InputBorder.none,
                                     hintText: '22',
@@ -618,6 +688,10 @@ class _MyPageState extends State<MyPage> {
                                     if (value!.isEmpty) {
                                       return 'This field cannot be left empty!';
                                     }
+                                    if (int.parse(value) >= 110) {
+                                      return 'Age is not valid';
+                                    }
+                                    return null;
                                   },
                                   onSaved: (value) {
                                     RegisterationModel.age = value!;
@@ -639,7 +713,7 @@ class _MyPageState extends State<MyPage> {
                               vertical: 10.0, horizontal: 20.0),
                           child: Row(
                             children: <Widget>[
-                              Padding(
+                              const Padding(
                                 padding: EdgeInsets.symmetric(
                                     vertical: 10.0, horizontal: 15.0),
                                 child: Icon(
@@ -658,7 +732,7 @@ class _MyPageState extends State<MyPage> {
                                 child: TextFormField(
                                   initialValue: initials['owner'] as String,
                                   keyboardType: TextInputType.name,
-                                  decoration: InputDecoration(
+                                  decoration: const InputDecoration(
                                     labelText:
                                         'Owner/Related Family Member Name',
                                     border: InputBorder.none,
@@ -670,6 +744,7 @@ class _MyPageState extends State<MyPage> {
                                     if (value!.isEmpty) {
                                       return 'This field cannot be left empty!';
                                     }
+                                    return null;
                                   },
                                   onSaved: (value) {
                                     RegisterationModel.owner = value!;
@@ -691,7 +766,7 @@ class _MyPageState extends State<MyPage> {
                               vertical: 10.0, horizontal: 20.0),
                           child: Row(
                             children: <Widget>[
-                              Padding(
+                              const Padding(
                                 padding: EdgeInsets.symmetric(
                                     vertical: 10.0, horizontal: 15.0),
                                 child: Icon(
@@ -710,7 +785,7 @@ class _MyPageState extends State<MyPage> {
                                 child: TextFormField(
                                   initialValue: initials['address'] as String,
                                   keyboardType: TextInputType.streetAddress,
-                                  decoration: InputDecoration(
+                                  decoration: const InputDecoration(
                                     labelText: 'Enter Your Address',
                                     border: InputBorder.none,
                                     hintText:
@@ -722,6 +797,7 @@ class _MyPageState extends State<MyPage> {
                                     if (value!.isEmpty) {
                                       return 'This field cannot be left empty!';
                                     }
+                                    return null;
                                   },
                                   onSaved: (value) {
                                     RegisterationModel.address = value!;
@@ -743,11 +819,11 @@ class _MyPageState extends State<MyPage> {
                               vertical: 10.0, horizontal: 20.0),
                           child: Row(
                             children: <Widget>[
-                              Padding(
+                              const Padding(
                                 padding: EdgeInsets.symmetric(
                                     vertical: 10.0, horizontal: 15.0),
                                 child: Icon(
-                                  Icons.family_restroom,
+                                  Icons.person_2_rounded,
                                   color: Colors.black,
                                 ),
                               ),
@@ -762,8 +838,8 @@ class _MyPageState extends State<MyPage> {
                                 child: TextFormField(
                                   initialValue: initials['fname'] as String,
                                   keyboardType: TextInputType.name,
-                                  decoration: InputDecoration(
-                                    labelText: 'Other Family Member Name',
+                                  decoration: const InputDecoration(
+                                    labelText: 'Father Name',
                                     border: InputBorder.none,
                                     hintText: 'William Dennis',
                                     hintStyle: TextStyle(
@@ -773,6 +849,7 @@ class _MyPageState extends State<MyPage> {
                                     if (value!.isEmpty) {
                                       return 'This field cannot be left empty!';
                                     }
+                                    return null;
                                   },
                                   onSaved: (value) {
                                     RegisterationModel.fname = value!;
@@ -794,7 +871,7 @@ class _MyPageState extends State<MyPage> {
                               vertical: 10.0, horizontal: 20.0),
                           child: Row(
                             children: <Widget>[
-                              Padding(
+                              const Padding(
                                 padding: EdgeInsets.symmetric(
                                     vertical: 10.0, horizontal: 15.0),
                                 child: Icon(
@@ -813,8 +890,8 @@ class _MyPageState extends State<MyPage> {
                                 child: TextFormField(
                                   initialValue: initials['fphoneNo'] as String,
                                   keyboardType: TextInputType.phone,
-                                  decoration: InputDecoration(
-                                    labelText: 'Family Member Phone Number',
+                                  decoration: const InputDecoration(
+                                    labelText: 'Father Phone Number',
                                     border: InputBorder.none,
                                     hintText: '030xxxxxxxx',
                                     hintStyle: TextStyle(
@@ -822,8 +899,21 @@ class _MyPageState extends State<MyPage> {
                                   ),
                                   validator: (value) {
                                     if (value!.isEmpty) {
-                                      return 'This field cannot be left empty!';
+                                      return 'Phone Number is not valid!';
+                                    } else if (!isPhone(value)) {
+                                      return 'Please enter valid Phone.';
                                     }
+                                    if (value.contains("#") ||
+                                        value.contains("*") ||
+                                        value.contains("\$") ||
+                                        value.contains("=") ||
+                                        value.contains("&") ||
+                                        value.contains("^") ||
+                                        value.contains("%") ||
+                                        value.contains("@")) {
+                                      return 'Invalid Phone Number';
+                                    }
+                                    return null;
                                   },
                                   onSaved: (value) {
                                     RegisterationModel.fphoneNo = value!;
@@ -863,18 +953,21 @@ class _MyPageState extends State<MyPage> {
                                               0.25),
                                       backgroundColor:
                                           MaterialStateProperty.all(
-                                              Color.fromRGBO(15, 39, 127,
+                                              const Color.fromRGBO(15, 39, 127,
                                                   1)), // <-- Button color
                                       overlayColor: MaterialStateProperty
                                           .resolveWith<Color?>((states) {
                                         if (states
-                                            .contains(MaterialState.pressed))
-                                          return Color.fromRGBO(15, 39, 127,
-                                              0.548); // <-- Splash color
+                                            .contains(MaterialState.pressed)) {
+                                          return const Color.fromRGBO(
+                                              15, 39, 127, 0.548);
+                                          return null; // <-- Splash color
+                                        }
+                                        return null;
                                       }),
                                     ),
-                                    child: Text(
-                                      "Request Credentials",
+                                    child: const Text(
+                                      "Continue",
                                       style: TextStyle(color: Colors.white),
                                     ),
                                     onPressed: () async {
@@ -950,13 +1043,13 @@ class _MyPageState extends State<MyPage> {
         context: context,
         builder: (context) {
           return AlertDialog(
-            title: Text('Add Family Member'),
-            content: Text('You want to add a family member?'),
+            title: const Text('Add Family Member'),
+            content: const Text('You want to add a family member?'),
             actions: <Widget>[
               TextButton(
                 onPressed: () {
                   // Handle "No" button press
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
                       content: Text("Your Details has been submitted ")));
                   Navigator.of(context).pop();
                   _formKey.currentState!.reset();
@@ -964,25 +1057,25 @@ class _MyPageState extends State<MyPage> {
                   // Close the dialog
                   // You can navigate back to the previous page here
                 },
-                child: Text('No'),
+                child: const Text('No'),
               ),
               TextButton(
                 onPressed: () {
+                  print(RegisterationModel.uid);
                   // Handle "Yes" button press
                   Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => Register_FM(
-                            docid: documentId,
-                            owner: RegisterationModel.owner,
-                            address: RegisterationModel.address,
-                            parentID: RegisterationModel.uid,
-                            ownerEmail: RegisterationModel.email),
-                      )); // Close the dialog
+                          builder: (context) => Register_FM(
+                              docid: documentId,
+                              owner: RegisterationModel.owner,
+                              address: RegisterationModel.address,
+                              parentID: documentId,
+                              ownerEmail: email))); // Close the dialog
                   // You can navigate to the page where you want to add a family member
                   // using Navigator or any other navigation method
                 },
-                child: Text('Yes'),
+                child: const Text('Yes'),
               ),
             ],
           );
